@@ -5,13 +5,15 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Form } from "@/components/ui/form";
-import { aspectRatioOptions, defaultValues, transformationTypes } from "@/constants";
+import { aspectRatioOptions, creditFee, defaultValues, transformationTypes } from "@/constants";
 import { CustomField } from "./CustomField";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { useState } from "react";
-import { AspectRatioKey } from "@/lib/utils";
+import { useState, useTransition } from "react";
+import { AspectRatioKey, debounce, deepMergeObjects } from "@/lib/utils";
 import { Button } from "../ui/button";
+import { updateCredits } from "@/lib/actions/user.actions";
+import MediaUploader from "./MediaUploader";
 
 export const formSchema = z.object({
     title: z.string(),
@@ -35,15 +37,16 @@ const TransformationForm = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isTransforming, setIsTransforming] = useState(false);
     const [transformationConfig, setTransformationConfig] = useState(config);
+    const [isPending, startTransition] = useTransition()
     const initialValues =
         data && action === "Update"
             ? {
-                  title: data?.title,
-                  aspectRatio: data?.aspectRatio,
-                  color: data?.color,
-                  prompt: data?.prompt,
-                  publicId: data?.publicId,
-              }
+                title: data?.title,
+                aspectRatio: data?.aspectRatio,
+                color: data?.color,
+                prompt: data?.prompt,
+                publicId: data?.publicId,
+            }
             : defaultValues;
 
     // 1. Define your form.
@@ -77,9 +80,31 @@ const TransformationForm = ({
         value: string,
         type: string,
         onChangeField: (value: string) => void
-    ) => {};
+    ) => {
+        debounce(() => {
+            setNewTransformation((prevState: any) => ({
+                ...prevState,
+                [type]: {
+                    ...prevState?.[type],
+                    [fieldName === "prompt" ? "prompt" : "to"]: value,
+                },
+            }));
+        }, 1000)();
+    };
 
-    const onTransformHandler = async () => {};
+    const onTransformHandler = async () => {
+        setIsTransforming(true)
+
+        setTransformationConfig(
+            deepMergeObjects(newTransformation, transformationConfig)
+        )
+
+        setNewTransformation(null)
+
+        startTransition(async () => {
+            await updateCredits(userId, creditFee)
+        })
+    };
 
     return (
         <Form {...form}>
@@ -152,6 +177,23 @@ const TransformationForm = ({
                         )}
                     </div>
                 )}
+                <div className="media-uploader-field">
+                    <CustomField
+                        control={form.control}
+                        name="publicId"
+                        className="flex size-full flex-col"
+                        render={({ field }) => (
+                            <MediaUploader
+                                onValueChange={field.onChange}
+                                setImage={setImage}
+                                publicId={field.value}
+                                image={image}
+                                type={type}
+                            />
+                        )}
+                    />
+
+                </div>
                 <div className="flex flex-col gap-4">
                     <Button
                         type="button"
