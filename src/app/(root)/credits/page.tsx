@@ -1,11 +1,8 @@
-
 const CreditPage = async () => {
- 
-
   return (
-    <>
-      
-    </>
+    <div>
+      credit
+    </div>
   );
 };
 

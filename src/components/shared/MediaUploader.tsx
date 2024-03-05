@@ -53,7 +53,7 @@ const MediaUploader = ({
 
   return (
     <CldUploadWidget
-      uploadPreset="chromaBlend"
+      uploadPreset="ai-chromeBlend"
       options={{
         multiple: false,
         resourceType: "image",
